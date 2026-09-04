@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ReservationStatus {
+  CONFIRMED
+  CANCELLED
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  passwordHash String
+  name         String
+  role         Role          @default(USER)
+  createdAt    DateTime      @default(now())
+  reservations Reservation[]
+}
+
+model Genre {
+  id     String       @id @default(cuid())
+  name   String       @unique
+  movies MovieGenre[]
+}
+
+model Movie {
+  id          String       @id @default(cuid())
+  title       String
+  description String
+  posterUrl   String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  genres      MovieGenre[]
+  showtimes   Showtime[]
+}
+
+model MovieGenre {
+  movieId String
+  genreId String
+  movie   Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  genre   Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([movieId, genreId])
+}
+
+model Showtime {
+  id          String        @id @default(cuid())
+  movieId     String
+  movie       Movie         @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  startsAt    DateTime
+  priceCents  Int
+  rows        Int
+  seatsPerRow Int
+  createdAt   DateTime      @default(now())
+  seats       Seat[]
+  reservations Reservation[]
+
+  @@index([startsAt])
+  @@index([movieId])
+}
+
+model Seat {
+  id            String        @id @default(cuid())
+  showtimeId    String
+  showtime      Showtime      @relation(fields: [showtimeId], references: [id], onDelete: Cascade)
+  row           String
+  number        Int
+  reservationId String?
+  reservation   Reservation?  @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+
+  @@unique([showtimeId, row, number])
+  @@index([reservationId])
+}
+
+model Reservation {
+  id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  showtimeId  String
+  showtime    Showtime          @relation(fields: [showtimeId], references: [id], onDelete: Cascade)
+  status      ReservationStatus @default(CONFIRMED)
+  totalCents  Int
+  createdAt   DateTime          @default(now())
+  cancelledAt DateTime?
+  seats       Seat[]
+
+  @@index([userId])
+  @@index([showtimeId])
+  @@index([status])
+}
