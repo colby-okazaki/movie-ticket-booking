@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { PrismaClient, Role } from "@prisma/client";
 
@@ -231,6 +232,42 @@ async function main() {
     limited: 1399,
   };
 
+  // Fake walk-in customers own the "already sold" seats so they render as taken.
+  const boxOffice = await prisma.user.upsert({
+    where: { email: "boxoffice@cinema.local" },
+    update: {},
+    create: {
+      email: "boxoffice@cinema.local",
+      name: "Box Office Walk-ins",
+      // Random hash — this account can't be logged into.
+      passwordHash: await bcrypt.hash(randomUUID(), 10),
+      role: Role.USER,
+    },
+  });
+
+  const showtimeRows: {
+    id: string;
+    movieId: string;
+    startsAt: Date;
+    priceCents: number;
+    rows: number;
+    seatsPerRow: number;
+  }[] = [];
+  const reservationRows: {
+    id: string;
+    userId: string;
+    showtimeId: string;
+    totalCents: number;
+    createdAt: Date;
+  }[] = [];
+  const seatRows: {
+    showtimeId: string;
+    row: string;
+    number: number;
+    reservationId: string | null;
+  }[] = [];
+
+  const now = new Date();
   for (const movie of MOVIES) {
     const created = await prisma.movie.create({
       data: {
@@ -250,21 +287,56 @@ async function main() {
       for (const slot of movie.slots) {
         const startsAt = wallClockUtc(dayOffset, slot);
         // Skip slots that already started today
-        if (startsAt <= new Date()) continue;
-        await createShowtime(
-          created.id,
-          startsAt,
-          prices[movie.weight],
-          movie.weight === "wide" ? 10 : 8,
-          movie.weight === "wide" ? 14 : 12,
-        );
+        if (startsAt <= now) continue;
+
+        const rows = movie.weight === "wide" ? 10 : 8;
+        const seatsPerRow = movie.weight === "wide" ? 14 : 12;
+        const priceCents = prices[movie.weight];
+        const showtimeId = randomUUID();
+        showtimeRows.push({ id: showtimeId, movieId: created.id, startsAt, priceCents, rows, seatsPerRow });
+
+        const occupancy = targetOccupancy(movie.weight, startsAt, dayOffset, opens);
+        const taken = pickTakenSeats(rows, seatsPerRow, occupancy);
+        const groupIds = taken.groups.map(() => randomUUID());
+        taken.groups.forEach((size, i) => {
+          reservationRows.push({
+            id: groupIds[i]!,
+            userId: boxOffice.id,
+            showtimeId,
+            totalCents: size * priceCents,
+            // Bought sometime in the last few days
+            createdAt: new Date(now.getTime() - Math.random() * 5 * 86_400_000),
+          });
+        });
+
+        for (let r = 0; r < rows; r++) {
+          for (let n = 1; n <= seatsPerRow; n++) {
+            const group = taken.grid[r]![n - 1]!;
+            seatRows.push({
+              showtimeId,
+              row: String.fromCharCode(65 + r),
+              number: n,
+              reservationId: group >= 0 ? groupIds[group]! : null,
+            });
+          }
+        }
       }
     }
   }
 
-  const showCount = await prisma.showtime.count();
+  // Batched inserts — one round trip per chunk instead of per showtime.
+  await prisma.showtime.createMany({ data: showtimeRows });
+  for (const chunk of chunks(reservationRows, 5000)) {
+    await prisma.reservation.createMany({ data: chunk });
+  }
+  for (const chunk of chunks(seatRows, 5000)) {
+    await prisma.seat.createMany({ data: chunk });
+  }
+
+  const soldSeats = seatRows.filter((s) => s.reservationId).length;
   console.log(
-    `Seed complete — ${MOVIES.length} now-playing titles, ${showCount} showtimes (mirrored public listings → fictional Marquee)`,
+    `Seed complete — ${MOVIES.length} now-playing titles, ${showtimeRows.length} showtimes, ` +
+      `${soldSeats}/${seatRows.length} seats pre-sold (${Math.round((soldSeats / seatRows.length) * 100)}%)`,
   );
   console.log(`Admin: ${admin.email} / 1234`);
   console.log(`User:  ${demoUser.email} / 1234`);
@@ -279,31 +351,80 @@ function wallClockUtc(dayOffset: number, hhmm: string) {
   return d;
 }
 
-async function createShowtime(
-  movieId: string,
+/**
+ * Fraction of seats already sold: bigger releases, evenings, weekends,
+ * opening days, and sooner dates sell better. Jittered so no two match.
+ */
+function targetOccupancy(
+  weight: "wide" | "solid" | "limited",
   startsAt: Date,
-  priceCents: number,
-  rows: number,
-  seatsPerRow: number,
+  dayOffset: number,
+  opensInDays: number,
 ) {
-  const seats = [];
-  for (let r = 0; r < rows; r++) {
-    const row = String.fromCharCode(65 + r);
-    for (let n = 1; n <= seatsPerRow; n++) {
-      seats.push({ row, number: n });
-    }
-  }
+  let o = weight === "wide" ? 0.55 : weight === "solid" ? 0.4 : 0.25;
+  const hour = startsAt.getUTCHours();
+  o *= hour < 14 ? 0.5 : hour < 17 ? 0.75 : hour < 20 ? 1.2 : 1.0;
+  const dow = startsAt.getUTCDay();
+  if (dow === 5 || dow === 6) o *= 1.3;
+  else if (dow === 0) o *= 1.15;
+  if (opensInDays > 0 && dayOffset === opensInDays) o *= 1.5; // opening day
+  o *= Math.max(0.3, 1 - 0.06 * dayOffset); // far-out shows haven't sold yet
+  o *= 0.7 + Math.random() * 0.6;
+  return Math.min(0.97, Math.max(0.02, o));
+}
 
-  return prisma.showtime.create({
-    data: {
-      movieId,
-      startsAt,
-      priceCents,
-      rows,
-      seatsPerRow,
-      seats: { create: seats },
-    },
-  });
+/**
+ * Fill the room like real buyers: parties of 1–5 sitting together,
+ * favoring middle-back rows and center seats.
+ * Returns a grid of group indexes (-1 = free) and each group's size.
+ */
+function pickTakenSeats(rows: number, seatsPerRow: number, occupancy: number) {
+  const grid = Array.from({ length: rows }, () => Array<number>(seatsPerRow).fill(-1));
+  const groups: number[] = [];
+  const target = Math.round(rows * seatsPerRow * occupancy);
+  let taken = 0;
+  let misses = 0;
+
+  while (taken < target && misses < 200) {
+    const size = Math.min(target - taken, pickPartySize());
+    // Row preference peaks ~60% of the way back
+    const row = clampInt(Math.round(gaussian(rows * 0.6, rows * 0.3)), 0, rows - 1);
+    const start = clampInt(
+      Math.round(gaussian(seatsPerRow / 2, seatsPerRow / 3.5) - size / 2),
+      0,
+      seatsPerRow - size,
+    );
+    const seats = grid[row]!;
+    if (seats.slice(start, start + size).some((g) => g >= 0)) {
+      misses++;
+      continue;
+    }
+    for (let i = start; i < start + size; i++) seats[i] = groups.length;
+    groups.push(size);
+    taken += size;
+  }
+  return { grid, groups };
+}
+
+function pickPartySize() {
+  const r = Math.random();
+  return r < 0.15 ? 1 : r < 0.6 ? 2 : r < 0.75 ? 3 : r < 0.95 ? 4 : 5;
+}
+
+function gaussian(mean: number, sd: number) {
+  const u = 1 - Math.random();
+  const v = Math.random();
+  return mean + sd * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+function clampInt(n: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, n));
+}
+
+function chunks<T>(arr: T[], size: number) {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
 }
 
 main()
