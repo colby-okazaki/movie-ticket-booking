@@ -2,6 +2,7 @@ import { Role } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
+import { theaterDayRange } from "../lib/time.js";
 import {
   AppError,
   asyncHandler,
@@ -30,12 +31,11 @@ showtimesRouter.get(
       throw new AppError(400, "Query param 'date' is required (YYYY-MM-DD)");
     }
 
-    const start = new Date(`${dateParam}T00:00:00.000Z`);
-    const end = new Date(`${dateParam}T23:59:59.999Z`);
+    const { start, end } = theaterDayRange(dateParam);
 
     const showtimes = await prisma.showtime.findMany({
       where: {
-        startsAt: { gte: start, lte: end },
+        startsAt: { gte: start, lt: end },
       },
       include: {
         movie: {

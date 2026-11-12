@@ -35,6 +35,8 @@ model Genre {
 
 model Movie {
   id          String       @id @default(cuid())
+  /// TMDB id for catalog sync; null for movies added by hand in admin
+  tmdbId      Int?         @unique
   title       String
   description String
   posterUrl   String

@@ -7,6 +7,7 @@ import { existsSync } from "node:fs";
 import { errorHandler } from "./lib/utils.js";
 import { adminRouter } from "./routes/admin.js";
 import { authRouter } from "./routes/auth.js";
+import { cronRouter } from "./routes/cron.js";
 import { genresRouter, moviesRouter } from "./routes/movies.js";
 import { reservationsRouter } from "./routes/reservations.js";
 import { showtimesRouter } from "./routes/showtimes.js";
@@ -35,6 +36,7 @@ app.use("/api/movies", moviesRouter);
 app.use("/api/showtimes", showtimesRouter);
 app.use("/api/reservations", reservationsRouter);
 app.use("/api/admin", adminRouter);
+app.use("/api/cron", cronRouter);
 
 if (hasClientBuild) {
   app.use(express.static(clientDist));

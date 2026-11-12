@@ -20,6 +20,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </nav>
       </header>
       <main className="page">{children}</main>
+      <footer className="site-footer">
+        Showtimes are in Pacific Time. Movie data and posters from{" "}
+        <a href="https://www.themoviedb.org" target="_blank" rel="noreferrer">
+          TMDB
+        </a>
+        . This product uses the TMDB API but is not endorsed or certified by TMDB.
+      </footer>
     </div>
   );
 }

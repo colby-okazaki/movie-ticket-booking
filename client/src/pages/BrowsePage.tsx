@@ -4,13 +4,13 @@ import {
   api,
   formatMoney,
   formatShowtime,
-  todayUtcDate,
+  todayTheaterDate,
   type ShowtimeSummary,
 } from "../api";
 import { AppLayout } from "../Layout";
 
 export function BrowsePage() {
-  const [date, setDate] = useState(todayUtcDate);
+  const [date, setDate] = useState(todayTheaterDate);
   const [showtimes, setShowtimes] = useState<ShowtimeSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -24,7 +24,7 @@ export function BrowsePage() {
         const result = await api.showtimesByDate(date);
         if (cancelled) return;
         if (result.showtimes.length === 0) {
-          const today = todayUtcDate();
+          const today = todayTheaterDate();
           if (date === today) {
             for (let offset = 1; offset <= 14; offset++) {
               const nextDate = addDays(today, offset);
@@ -127,7 +127,7 @@ export function BrowsePage() {
       {error && <p className="form-error">{error}</p>}
       {!loading && !error && grouped.length === 0 && (
         <p className="muted">
-          Nothing playing on this date. Try {tomorrowUtcDate()} or {todayUtcDate()}.
+          Nothing playing on this date. Try {tomorrowTheaterDate()} or {todayTheaterDate()}.
         </p>
       )}
 
@@ -157,10 +157,8 @@ export function BrowsePage() {
   );
 }
 
-function tomorrowUtcDate() {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() + 1);
-  return d.toISOString().slice(0, 10);
+function tomorrowTheaterDate() {
+  return addDays(todayTheaterDate(), 1);
 }
 
 function addDays(isoDate: string, days: number) {

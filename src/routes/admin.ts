@@ -1,6 +1,7 @@
 import { ReservationStatus, Role } from "@prisma/client";
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
+import { theaterDayRange } from "../lib/time.js";
 import { asyncHandler } from "../lib/utils.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 
@@ -14,7 +15,7 @@ adminRouter.get(
     const dateParam =
       typeof req.query.date === "string" ? req.query.date : undefined;
 
-    let showtimeFilter: { startsAt?: { gte: Date; lte: Date } } = {};
+    let showtimeFilter: { startsAt?: { gte: Date; lt: Date } } = {};
     if (dateParam) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
         res.status(400).json({ error: "Invalid date (YYYY-MM-DD)" });
@@ -22,8 +23,8 @@ adminRouter.get(
       }
       showtimeFilter = {
         startsAt: {
-          gte: new Date(`${dateParam}T00:00:00.000Z`),
-          lte: new Date(`${dateParam}T23:59:59.999Z`),
+          gte: theaterDayRange(dateParam).start,
+          lt: theaterDayRange(dateParam).end,
         },
       };
     }

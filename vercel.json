@@ -1,5 +1,11 @@
 {
   "framework": "express",
   "buildCommand": "npm run vercel-build",
-  "installCommand": "npm install && npm --prefix client install"
+  "installCommand": "npm install && npm --prefix client install",
+  "crons": [
+    {
+      "path": "/api/cron/refresh-movies",
+      "schedule": "0 11 * * *"
+    }
+  ]
 }

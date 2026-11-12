@@ -5,7 +5,7 @@ import {
   formatShowtime,
   localDatetimeToIso,
   toLocalDatetimeInput,
-  todayUtcDate,
+  todayTheaterDate,
   type MovieCatalogEntry,
   type ShowtimeSummary,
 } from "../api";
@@ -30,7 +30,7 @@ const defaultForm = (): ShowtimeForm => ({
 
 export function AdminShowtimesPage() {
   const { token } = useAuth();
-  const [date, setDate] = useState(todayUtcDate);
+  const [date, setDate] = useState(todayTheaterDate);
   const [movies, setMovies] = useState<MovieCatalogEntry[]>([]);
   const [showtimes, setShowtimes] = useState<ShowtimeSummary[]>([]);
   const [form, setForm] = useState<ShowtimeForm>(defaultForm);

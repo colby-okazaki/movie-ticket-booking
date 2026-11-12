@@ -259,8 +259,12 @@ export function formatMoney(cents: number) {
   }).format(cents / 100);
 }
 
+/** Marquee's showtimes are on the theater's clock, wherever the viewer is. */
+export const THEATER_TZ = "America/Los_Angeles";
+
 export function formatShowtime(iso: string) {
   return new Intl.DateTimeFormat(undefined, {
+    timeZone: THEATER_TZ,
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -269,22 +273,53 @@ export function formatShowtime(iso: string) {
   }).format(new Date(iso));
 }
 
-export function todayUtcDate() {
-  return new Date().toISOString().slice(0, 10);
+/** Today's date on the theater's calendar (YYYY-MM-DD). */
+export function todayTheaterDate() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: THEATER_TZ }).format(new Date());
+}
+
+const theaterParts = new Intl.DateTimeFormat("en-US", {
+  timeZone: THEATER_TZ,
+  hourCycle: "h23",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+});
+
+function partsAt(ts: number) {
+  return Object.fromEntries(
+    theaterParts.formatToParts(new Date(ts)).map((p) => [p.type, p.value]),
+  ) as Record<string, string>;
+}
+
+function tzOffset(ts: number) {
+  const p = partsAt(ts);
+  const asUtc = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+  return asUtc - Math.floor(ts / 1000) * 1000;
 }
 
 export function homePathForRole(role: Role) {
   return role === "ADMIN" ? "/admin" : "/browse";
 }
 
+/** ISO instant → "YYYY-MM-DDTHH:mm" on the theater's clock, for datetime-local inputs. */
 export function toLocalDatetimeInput(iso: string) {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const p = partsAt(new Date(iso).getTime());
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 }
 
+/** "YYYY-MM-DDTHH:mm" on the theater's clock → ISO instant. */
 export function localDatetimeToIso(local: string) {
-  return new Date(local).toISOString();
+  const [date, time] = local.split("T");
+  const [y, mo, d] = date!.split("-").map(Number);
+  const [h, mi] = (time ?? "00:00").split(":").map(Number);
+  const guess = Date.UTC(y!, mo! - 1, d!, h ?? 0, mi ?? 0);
+  let ts = guess - tzOffset(guess);
+  ts = guess - tzOffset(ts);
+  return new Date(ts).toISOString();
 }
 
 export function formatPercent(rate: number) {

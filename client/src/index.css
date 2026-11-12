@@ -1270,3 +1270,18 @@ input {
     flex-direction: row;
   }
 }
+
+.site-footer {
+  width: min(920px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1rem 0 2rem;
+  border-top: 1px solid rgba(127, 127, 127, 0.2);
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.site-footer a {
+  color: inherit;
+  text-decoration: underline;
+}

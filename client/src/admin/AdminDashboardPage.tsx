@@ -4,7 +4,7 @@ import {
   formatMoney,
   formatPercent,
   formatShowtime,
-  todayUtcDate,
+  todayTheaterDate,
   type ReportSummary,
 } from "../api";
 import { useAuth } from "../auth";
@@ -12,7 +12,7 @@ import { AdminLayout } from "./AdminLayout";
 
 export function AdminDashboardPage() {
   const { token } = useAuth();
-  const [date, setDate] = useState(todayUtcDate);
+  const [date, setDate] = useState(todayTheaterDate);
   const [report, setReport] = useState<ReportSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
