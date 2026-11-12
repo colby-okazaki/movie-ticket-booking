@@ -5,9 +5,9 @@ import { PrismaClient, Role } from "@prisma/client";
 const prisma = new PrismaClient();
 
 /**
- * Catalog mirrored from public “now playing” listings (AMC / showtimes.com)
- * as of late July 2026. Marquee is a fictional theater — not affiliated with
- * any real chain. Showtimes follow common multiplex slot patterns.
+ * Catalog mirrored from public “now playing” listings (Rotten Tomatoes / TMDB)
+ * as of mid-November 2026. Marquee is a fictional theater — not affiliated with
+ * any real chain. Showtimes are made up and follow common multiplex slot patterns.
  */
 const MOVIES: {
   title: string;
@@ -18,132 +18,164 @@ const MOVIES: {
   slots: string[];
   /** How many screens / days this title dominates */
   weight: "wide" | "solid" | "limited";
+  /** Days from seed date until the title opens (for upcoming releases) */
+  opensInDays?: number;
 }[] = [
   {
-    title: "Spider-Man: Brand New Day",
+    title: "Godzilla Minus Zero",
     description:
-      "Four years after the world forgot Peter Parker, he lives alone and fights crime full-time as Spider-Man in a city that no longer knows his name.",
-    posterUrl: "https://image.tmdb.org/t/p/w500/6Q21yptoOCUq4ErwVncesLPVplb.jpg",
+      "Two years after Godzilla plunged a war-ravaged Japan into despair, the country has finally clawed back a fragile peace—until a new threat strikes and crushes hope in an instant.",
+    posterUrl: "https://image.tmdb.org/t/p/w500/hSmIJluOJmTWvJs4d7kHRxjc8s8.jpg",
+    genres: ["Action", "Sci-Fi", "Drama"],
+    slots: ["11:30", "14:45", "18:00", "21:15"],
+    weight: "wide",
+  },
+  {
+    title: "The Cat in the Hat",
+    description:
+      "Assigned his toughest mission yet, the Cat must cheer up siblings Gabby and Sebastian as they adjust to life in a new town—or risk losing his magical hat forever.",
+    posterUrl: "https://image.tmdb.org/t/p/w500/mWN6knIVJ2o7eGwSm7mOgSCwNUc.jpg",
+    genres: ["Animation", "Comedy", "Family"],
+    slots: ["10:15", "12:40", "15:10", "17:35"],
+    weight: "wide",
+  },
+  {
+    title: "Ebenezer",
+    description:
+      "An elderly miser is visited by the ghost of his former partner and the Spirits of Christmas Past, Present, and Yet to Come, forcing him to confront his past and fight for a second chance.",
+    posterUrl: "https://image.tmdb.org/t/p/w500/6H2N59jJW1hZEzn2ZdrMvJw5vNI.jpg",
+    genres: ["Drama", "Fantasy", "Family"],
+    slots: ["12:00", "15:00", "18:15", "21:00"],
+    weight: "wide",
+    opensInDays: 1,
+  },
+  {
+    title: "The Hunger Games: Sunrise on the Reaping",
+    description:
+      "Return to Panem 24 years before The Hunger Games, starting on the morning of the reaping for the 50th Games—the Second Quarter Quell.",
+    posterUrl: "https://image.tmdb.org/t/p/w500/j1MNyNNgNQL6f27cb3m3uKaPKd6.jpg",
     genres: ["Action", "Adventure", "Sci-Fi"],
-    slots: ["12:30", "15:45", "18:30", "21:15"],
+    slots: ["12:15", "15:45", "19:00", "22:15"],
     weight: "wide",
+    opensInDays: 8,
   },
   {
-    title: "The Odyssey",
+    title: "Wild Horse Nine",
     description:
-      "Christopher Nolan’s mythic action epic: Odysseus embarks on a perilous journey home after the Trojan War, facing gods, monsters, and trials that stretch his cunning and humanity.",
-    posterUrl: "https://image.tmdb.org/t/p/w500/5rhTDKUhPYvpdQIijFIs5VoWsON.jpg",
-    genres: ["Action", "Adventure", "Drama"],
-    slots: ["10:30", "14:15", "18:00", "21:45"],
-    weight: "wide",
-  },
-  {
-    title: "Moana",
-    description:
-      "Teenage Moana answers the Ocean’s call and voyages beyond the reef of Motunui with demigod Maui on a journey to restore prosperity to her people.",
-    posterUrl: "https://image.tmdb.org/t/p/w500/zKVgiv5qHCvCLT4A2ymJi5QeXDH.jpg",
-    genres: ["Adventure", "Family", "Fantasy"],
-    slots: ["11:00", "13:40", "16:20", "19:00"],
-    weight: "wide",
-  },
-  {
-    title: "Toy Story 5",
-    description:
-      "Woody, Buzz, and the gang return for a new adventure as toys navigate friendship, change, and what it means to be there for a kid.",
-    posterUrl: "https://image.tmdb.org/t/p/w500/sfQtVlIHljToOwYjhe21KPGzZWK.jpg",
-    genres: ["Animation", "Comedy", "Family"],
-    slots: ["10:15", "12:50", "15:30", "18:10"],
-    weight: "wide",
-  },
-  {
-    title: "Minions & Monsters",
-    description:
-      "The Minions collide with a new cast of monsters in a chaotic, family-friendly adventure straight from the Despicable Me universe.",
-    posterUrl: "https://image.tmdb.org/t/p/w500/nz7i42yhLIJ4ve9JKgM6NthoLHO.jpg",
-    genres: ["Animation", "Comedy", "Family"],
-    slots: ["10:45", "13:15", "15:50", "18:25"],
+      "Shortly before the 1973 Chilean coup, two CIA agents are sent to Easter Island, where their dark pasts, present conspiracies, and a bond with two rebellious students threaten to send the trip sideways.",
+    posterUrl: "https://image.tmdb.org/t/p/w500/dNJFRtVg3xLQ7dbNIQ55cmmIniD.jpg",
+    genres: ["Comedy", "Thriller"],
+    slots: ["13:20", "16:30", "19:40", "22:20"],
     weight: "solid",
   },
   {
-    title: "Evil Dead Burn",
+    title: "Ramayana: Rise of a Legend",
     description:
-      "A new nightmare in the Evil Dead saga as survivors confront Deadites and the price of opening the wrong book.",
-    posterUrl: "https://image.tmdb.org/t/p/w500/ztadKzIIR0ERYqpHteaPFtk7inP.jpg",
-    genres: ["Horror", "Thriller"],
-    slots: ["16:45", "19:30", "22:15"],
+      "An ancient epic follows a young prince and princess whose marriage and exile mark the beginning of a legendary journey of love, duty, and destiny.",
+    posterUrl: "https://image.tmdb.org/t/p/w500/vBQ7wks68OhJKlb3RnXSl2yXBXK.jpg",
+    genres: ["Action", "Adventure", "Fantasy"],
+    slots: ["13:00", "17:00", "20:45"],
     weight: "solid",
   },
   {
-    title: "Young Washington",
+    title: "How to Rob a Bank",
     description:
-      "A formative chapter in George Washington’s life—ambition, war, and the making of a future founder.",
-    posterUrl: "https://image.tmdb.org/t/p/w500/ntW9zzhDmbt3sXDyPXb7SHVuDdB.jpg",
+      "A crew of social-media-savvy bank robbers livestreams their heists—unaware their viral fame has put them in the crosshairs of a veteran FBI agent and a brilliant software engineer.",
+    posterUrl: "https://image.tmdb.org/t/p/w500/ifYDZkr2qkHFz87TNVvlxajOxl5.jpg",
+    genres: ["Action", "Crime", "Thriller"],
+    slots: ["14:00", "17:10", "20:20"],
+    weight: "solid",
+    opensInDays: 1,
+  },
+  {
+    title: "Clayface",
+    description:
+      "Gotham street kid turned Hollywood star Matt Hagen is horribly disfigured by a crime boss—and the experimental treatment that restores him also loosens his grip on reality.",
+    posterUrl: "https://image.tmdb.org/t/p/w500/9l1NuFjel2j89hiuiJbsxfblqjy.jpg",
+    genres: ["Horror", "Crime", "Thriller"],
+    slots: ["16:00", "19:10", "22:00"],
+    weight: "solid",
+  },
+  {
+    title: "Wildwood",
+    description:
+      "Prue and her classmate Curtis are drawn into a magical forest on a desperate quest to rescue Prue’s baby brother from a murder of crows led by the mysterious Alexandra.",
+    posterUrl: "https://image.tmdb.org/t/p/w500/snFM00mpNAfUzUtkdEW0uDEvXA0.jpg",
+    genres: ["Animation", "Adventure", "Family"],
+    slots: ["10:45", "13:30", "16:15"],
+    weight: "solid",
+  },
+  {
+    title: "Ghost Soldier",
+    description:
+      "When a foreign corporation moves to seize his neighbors’ land, off-the-grid former Special Forces soldier Henry “Fitz” Fitzgerald wages a one-man war with experimental tech.",
+    posterUrl: "https://image.tmdb.org/t/p/w500/8Y4oJ5iUs3hgPcDB3SIEmsNYjZk.jpg",
+    genres: ["Action", "Thriller"],
+    slots: ["15:30", "18:45", "21:30"],
+    weight: "solid",
+  },
+  {
+    title: "Resident Evil",
+    description:
+      "Medical courier Bryan unwittingly finds himself fighting for survival as one fateful, horrifying night collapses into chaos.",
+    posterUrl: "https://image.tmdb.org/t/p/w500/gAgWJhUSQWCgtKR8170nMkYlBda.jpg",
+    genres: ["Horror", "Action"],
+    slots: ["17:20", "20:00", "22:40"],
+    weight: "limited",
+  },
+  {
+    title: "Verity",
+    description:
+      "Hired to ghostwrite for best-selling author Verity Crawford, Lowen Ashleigh uncovers Verity’s autobiographical notes—and becomes entangled in what may be a lethal conspiracy.",
+    posterUrl: "https://image.tmdb.org/t/p/w500/rmaNMA1seHqpjtnYKzyynFAr1g8.jpg",
+    genres: ["Thriller", "Drama"],
+    slots: ["16:40", "19:30", "22:10"],
+    weight: "limited",
+  },
+  {
+    title: "I Play Rocky",
+    description:
+      "The true story of an unknown actor told “no” at every turn, as Sylvester Stallone bets everything on himself to play the lead in the film he wrote.",
+    posterUrl: "https://image.tmdb.org/t/p/w500/xE5tY3lppZUyG7WKKThsuYHuAHr.jpg",
     genres: ["Drama", "History"],
-    slots: ["13:00", "16:00", "19:15"],
-    weight: "solid",
-  },
-  {
-    title: "Supergirl",
-    description:
-      "When a ruthless adversary strikes too close to home, Kara Zor-El reluctantly joins forces with an unlikely companion on an interstellar journey of vengeance and justice.",
-    posterUrl: "https://image.tmdb.org/t/p/w500/niSvU02l2BONH9ivubV6K1a5QiK.jpg",
-    genres: ["Action", "Adventure", "Sci-Fi"],
-    slots: ["12:00", "14:45", "17:30", "20:30"],
-    weight: "wide",
-  },
-  {
-    title: "The Invite",
-    description:
-      "Joe and Angela’s marriage is on thin ice. When they invite their enigmatic upstairs neighbors for dinner, the night spirals into unexpected places.",
-    posterUrl: "https://image.tmdb.org/t/p/w500/b7Dr8Chzse8VagexAporUu2RtLx.jpg",
-    genres: ["Thriller", "Drama"],
-    slots: ["15:00", "17:45", "20:45"],
+    slots: ["14:20", "17:30", "20:30"],
     weight: "limited",
   },
   {
-    title: "Obsession",
+    title: "Wicker",
     description:
-      "After breaking the mysterious One Wish Willow to win his crush’s heart, a hopeless romantic gets exactly what he asked for—and discovers some desires come at a dark price.",
-    posterUrl: "https://image.tmdb.org/t/p/w500/bRwnj8WEKBCvmfeUNOukJPwB43K.jpg",
-    genres: ["Horror", "Thriller", "Romance"],
-    slots: ["14:30", "17:15", "21:00"],
+      "Fed up with her small-minded seaside neighbors, a ridiculed fisherwoman commissions a husband made of wicker—sparking outrage, jealousy, and chaos.",
+    posterUrl: "https://image.tmdb.org/t/p/w500/6FcBZOKvyrLCKGCyBG0ySCR4okt.jpg",
+    genres: ["Fantasy", "Romance", "Comedy"],
+    slots: ["15:15", "19:50"],
     weight: "limited",
   },
   {
-    title: "Disclosure Day",
+    title: "Street Fighter",
     description:
-      "A high-stakes thriller timed to a day when secrets can no longer stay buried.",
-    posterUrl: "https://image.tmdb.org/t/p/w500/AnJ8IQJI23hNpYXVNaythu061Ru.jpg",
-    genres: ["Thriller", "Drama"],
-    slots: ["16:10", "19:00", "21:50"],
+      "In 1993, estranged fighters Ryu and Ken Masters are recruited by Chun-Li for the World Warrior Tournament—a brutal clash hiding a deadly conspiracy.",
+    posterUrl: "https://image.tmdb.org/t/p/w500/dJPT2Uf12X6aFg8i5N67NTpIZ9t.jpg",
+    genres: ["Action", "Adventure"],
+    slots: ["18:30", "21:45"],
     weight: "limited",
   },
   {
-    title: "Motor City",
+    title: "Drummer Boy",
     description:
-      "In 1970s Detroit, John Miller falls for a gangster’s girl and lands in prison for a crime he didn’t commit—then plots revenge against the man who ruined his life.",
-    posterUrl: "https://image.tmdb.org/t/p/w500/lGovcOtxugJPhfJjFKud9EbWtOA.jpg",
-    genres: ["Action", "Crime", "Drama"],
-    slots: ["15:20", "18:05", "20:50"],
+      "As America’s fight for independence begins, a young drummer boy, an enslaved woman, and a divided family search for freedom in a story of faith and forgiveness.",
+    posterUrl: "https://image.tmdb.org/t/p/w500/bhjdgMm2fFrysSzVqv5RwRwIbVf.jpg",
+    genres: ["Drama", "History", "Music"],
+    slots: ["13:45", "18:20"],
     weight: "limited",
   },
   {
-    title: "Hadestown: The Musical",
+    title: "Heart of the Beast",
     description:
-      "The tragic love of Orpheus and Eurydice intertwines with Hades and Persephone in this filmed stage musical of the Broadway hit.",
-    posterUrl: "https://image.tmdb.org/t/p/w500/iJNVygzkuOSCOdCPNI1nLSeF7sz.jpg",
-    genres: ["Music", "Drama", "Fantasy"],
-    slots: ["14:00", "19:45"],
+      "After a plane crash, Special Forces officer James Belmont and his combat dog Odin are stranded deep in the Alaskan wilderness in a brutal fight for survival.",
+    posterUrl: "https://image.tmdb.org/t/p/w500/6sYemVUn79UPKz1ZsSG6kPU4RVy.jpg",
+    genres: ["Action", "Adventure", "Drama"],
+    slots: ["14:10", "19:20"],
     weight: "limited",
-  },
-  {
-    title: "Superman",
-    description:
-      "Clark Kent embarks on a journey to reconcile his Kryptonian heritage with his human upbringing as Superman faces new threats to Metropolis.",
-    posterUrl: "https://image.tmdb.org/t/p/w500/ldyfo0BKmz5rWtJJKCvwaNS4cJT.jpg",
-    genres: ["Action", "Adventure", "Sci-Fi"],
-    slots: ["13:30", "17:00", "20:15"],
-    weight: "solid",
   },
 ];
 
@@ -213,7 +245,8 @@ async function main() {
       },
     });
 
-    for (const dayOffset of daySpan(movie.weight)) {
+    const opens = movie.opensInDays ?? 0;
+    for (const dayOffset of daySpan(movie.weight).map((d) => d + opens)) {
       for (const slot of movie.slots) {
         const startsAt = wallClockUtc(dayOffset, slot);
         // Skip slots that already started today
