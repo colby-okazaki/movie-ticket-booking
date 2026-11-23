@@ -1,8 +1,8 @@
 # Marquee — Movie Reservation
 
-Full-stack cinema booking app for a fictional theater, with separate **User** and
-**Admin** experiences. The lineup tracks what's actually playing in US theaters
-and refreshes itself every day.
+Full-stack cinema booking app for a fictional theater: an open booking site for
+visitors and a password-protected admin area for staff. The lineup tracks what's
+actually playing in US theaters and refreshes itself every day.
 
 **Live site:** https://movie-reservation-app-black.vercel.app
 
@@ -14,6 +14,10 @@ and refreshes itself every day.
 - **Admin** — click **Admin** in the top-right corner and enter the password
   `1234`. Manage movies, showtimes and reservations, and see the
   occupancy/revenue dashboard. Signing out returns you to your guest view.
+
+Logins are remembered for 7 days, so a browser still signed in as admin opens
+the dashboard instead of showtimes. Sign out, or open the site in a private
+window, to see the visitor view.
 
 ## Features
 
@@ -53,8 +57,33 @@ movies, showtimes and reservations.
 
 ## Stack
 
-TypeScript, Node.js, Express, Prisma, PostgreSQL, React, Vite, JWT, Vercel
-(Functions + Cron), TMDB API
+| Layer | Tools |
+|-------|-------|
+| Frontend | React, React Router, Vite, plain CSS |
+| Backend | Node.js, Express, TypeScript, JWT, bcrypt, Zod, Helmet |
+| Data | PostgreSQL (Prisma Postgres), Prisma |
+| Hosting | Vercel (Functions + Cron) |
+| External | TMDB API |
+
+## Project layout
+
+```
+src/
+  app.ts               Express app: routes, security headers, serves the built client
+  routes/              auth (guest + admin sign-in), movies, showtimes,
+                       reservations, admin stats, cron
+  lib/catalog.ts       TMDB lineup + showtime/seat-demand sync
+  lib/time.ts          Theater clock (Pacific Time) helpers
+  middleware/auth.ts   JWT verification and role checks
+prisma/
+  schema.prisma        Users, movies, genres, showtimes, seats, reservations
+  seed.ts              Full reset + lineup rebuild
+client/src/
+  pages/               Showtimes, seat picker, My Tickets, admin sign-in
+  admin/               Dashboard, movies, showtimes, reservations
+  auth.tsx             Guest/admin session handling
+  api.ts               API client and date/money formatting
+```
 
 ## Run locally
 
@@ -83,6 +112,12 @@ npm run dev:client   # UI on :5174
 | `JWT_SECRET` | Signs login tokens |
 | `TMDB_API_KEY` | TMDB v3 API key — free at https://www.themoviedb.org/settings/api |
 | `CRON_SECRET` | Any long random string; guards the cron route |
+
+Lint the client:
+
+```bash
+npm --prefix client run lint
+```
 
 To trigger a refresh by hand:
 
