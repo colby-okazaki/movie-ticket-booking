@@ -1,9 +1,7 @@
 import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
-import { useAuth } from "./auth";
 
 export function AppLayout({ children }: { children: ReactNode }) {
-  const { user, logout } = useAuth();
 
   return (
     <div className="app-shell">
@@ -14,9 +12,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <nav className="topnav">
           <Link to="/browse">Showtimes</Link>
           <Link to="/tickets">My Tickets</Link>
-          <button type="button" className="text-btn" onClick={logout}>
-            Sign out{user?.name ? ` · ${user.name}` : ""}
-          </button>
+          <Link to="/admin/login" className="admin-corner-link" title="Staff sign-in">
+            Admin
+          </Link>
         </nav>
       </header>
       <main className="page">{children}</main>

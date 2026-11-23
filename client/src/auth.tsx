@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -13,76 +14,110 @@ type AuthState = {
   user: User | null;
   token: string | null;
   loading: boolean;
+  /** Admin sign-in. Visitors never log in — they get a guest account automatically. */
   login: (email: string, password: string) => Promise<void>;
-  signup: (name: string, email: string, password: string) => Promise<void>;
+  /** Leaves the admin session and returns to this browser's guest account on the showtimes page. */
   logout: () => void;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
+/** Token for whoever is signed in right now (guest or admin) */
 const TOKEN_KEY = "marquee_token";
+/** This browser's guest account, kept across admin sessions so its tickets stay */
+const GUEST_TOKEN_KEY = "marquee_guest_token";
+
+function read(key: string) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function write(key: string, value: string | null) {
+  try {
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+  } catch {
+    // Storage blocked (private mode): the session still works, it just won't persist.
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
+  const [token, setToken] = useState<string | null>(() => read(TOKEN_KEY) ?? read(GUEST_TOKEN_KEY));
   const [loading, setLoading] = useState(true);
+  // One in-flight guest creation at a time (React dev mode runs effects twice)
+  const guestRequest = useRef<Promise<{ user: User; token: string }> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    async function hydrate() {
-      if (!token) {
-        setLoading(false);
-        return;
-      }
+
+    async function startGuest() {
+      guestRequest.current ??= api.guest();
       try {
-        const { user: me } = await api.me(token);
-        if (!cancelled) setUser(me);
-      } catch {
-        localStorage.removeItem(TOKEN_KEY);
+        const result = await guestRequest.current;
+        write(GUEST_TOKEN_KEY, result.token);
+        write(TOKEN_KEY, result.token);
         if (!cancelled) {
-          setToken(null);
-          setUser(null);
+          setUser(result.user);
+          if (token !== result.token) setToken(result.token);
         }
+      } finally {
+        guestRequest.current = null;
+      }
+    }
+
+    async function hydrate() {
+      setLoading(true);
+      try {
+        if (!token) {
+          await startGuest();
+          return;
+        }
+        try {
+          const { user: me } = await api.me(token);
+          if (!cancelled) setUser(me);
+        } catch {
+          // Expired or unknown token: fall back to this browser's guest, else a fresh one
+          const guestToken = read(GUEST_TOKEN_KEY);
+          write(TOKEN_KEY, null);
+          if (guestToken && guestToken !== token) {
+            if (!cancelled) setToken(guestToken); // re-runs this effect with the guest token
+            return;
+          }
+          write(GUEST_TOKEN_KEY, null);
+          await startGuest();
+        }
+      } catch {
+        if (!cancelled) setUser(null);
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
+
     void hydrate();
     return () => {
       cancelled = true;
     };
   }, [token]);
 
-  const persist = useCallback((nextUser: User, nextToken: string) => {
-    localStorage.setItem(TOKEN_KEY, nextToken);
-    setToken(nextToken);
-    setUser(nextUser);
+  const login = useCallback(async (email: string, password: string) => {
+    const result = await api.login({ email, password });
+    write(TOKEN_KEY, result.token);
+    setUser(result.user);
+    setToken(result.token);
   }, []);
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      const result = await api.login({ email, password });
-      persist(result.user, result.token);
-    },
-    [persist],
-  );
-
-  const signup = useCallback(
-    async (name: string, email: string, password: string) => {
-      const result = await api.signup({ name, email, password });
-      persist(result.user, result.token);
-    },
-    [persist],
-  );
-
   const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
-    setToken(null);
-    setUser(null);
+    write(TOKEN_KEY, read(GUEST_TOKEN_KEY));
+    // Full load straight to showtimes; the app restarts as this browser's guest
+    window.location.assign("/browse");
   }, []);
 
   const value = useMemo(
-    () => ({ user, token, loading, login, signup, logout }),
-    [user, token, loading, login, signup, logout],
+    () => ({ user, token, loading, login, logout }),
+    [user, token, loading, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

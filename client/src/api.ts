@@ -93,6 +93,9 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
+  guest: () =>
+    request<{ user: User; token: string }>("/api/auth/guest", { method: "POST" }),
+
   me: (token: string) => request<{ user: User }>("/api/auth/me", {}, token),
 
   showtimesByDate: (date: string) =>
@@ -299,10 +302,6 @@ function tzOffset(ts: number) {
   const p = partsAt(ts);
   const asUtc = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
   return asUtc - Math.floor(ts / 1000) * 1000;
-}
-
-export function homePathForRole(role: Role) {
-  return role === "ADMIN" ? "/admin" : "/browse";
 }
 
 /** ISO instant → "YYYY-MM-DDTHH:mm" on the theater's clock, for datetime-local inputs. */

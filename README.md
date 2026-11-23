@@ -6,17 +6,14 @@ and refreshes itself every day.
 
 **Live site:** https://movie-reservation-app-black.vercel.app
 
-## Demo logins
+## Using the demo
 
-On the home page, pick **User** or **Admin**, then enter the password.
-
-| Account | Email | Password |
-|---------|-------|----------|
-| User | `user@cinema.local` | `1234` |
-| Admin | `admin@cinema.local` | `1234` |
-
-- **User** — browse showtimes by date, pick seats on a live seat map, manage tickets
-- **Admin** — movies, showtimes, reservations, occupancy/revenue dashboard
+- **Visitors** — no login. Open the site to browse showtimes, pick seats on a
+  live seat map and book. Each browser gets its own guest account automatically,
+  so **My Tickets** is private to that visitor.
+- **Admin** — click **Admin** in the top-right corner and enter the password
+  `1234`. Manage movies, showtimes and reservations, and see the
+  occupancy/revenue dashboard. Signing out returns you to your guest view.
 
 ## Features
 
@@ -39,6 +36,9 @@ On the home page, pick **User** or **Admin**, then enter the password.
   the viewer's time zone.
 - **Seat booking.** Transactional reservations prevent double-booking; users can
   cancel upcoming tickets.
+- **Frictionless guests.** Visitors are signed in as an anonymous guest on first
+  visit (`POST /api/auth/guest`); unused guest accounts are cleaned up after 30
+  days by the daily job.
 
 ## How the daily refresh works
 

@@ -1285,3 +1285,25 @@ input {
   color: inherit;
   text-decoration: underline;
 }
+
+/* Staff sign-in tucked into the top-right corner */
+.admin-corner-link {
+  padding: 0.2rem 0.6rem;
+  border: 1px solid rgba(127, 127, 127, 0.35);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.topnav a.admin-corner-link:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.back-to-site {
+  align-self: flex-start;
+  font-size: 0.9rem;
+  text-decoration: none;
+}

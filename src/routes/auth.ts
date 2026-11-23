@@ -1,6 +1,7 @@
 import { Role } from "@prisma/client";
 import { Router } from "express";
 import bcrypt from "bcryptjs";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { AppError, asyncHandler, paramId, validateBody } from "../lib/utils.js";
@@ -20,6 +21,8 @@ const loginSchema = z.object({
 const promoteSchema = z.object({
   role: z.nativeEnum(Role),
 });
+
+export const GUEST_EMAIL_DOMAIN = "guest.cinema.local";
 
 export const authRouter = Router();
 
@@ -72,6 +75,28 @@ authRouter.post(
       },
       token,
     });
+  }),
+);
+
+/**
+ * Visitors don't log in: each browser gets its own guest account on first
+ * visit so "My Tickets" is private to them. The account has no password and
+ * can only be used through the token returned here.
+ */
+authRouter.post(
+  "/guest",
+  asyncHandler(async (_req, res) => {
+    const user = await prisma.user.create({
+      data: {
+        email: `guest-${randomUUID()}@${GUEST_EMAIL_DOMAIN}`,
+        name: "Guest",
+        passwordHash: `!guest-${randomUUID()}`, // not a bcrypt hash, so no password can match
+        role: Role.USER,
+      },
+      select: { id: true, email: true, name: true, role: true, createdAt: true },
+    });
+    const token = signToken({ userId: user.id, role: user.role });
+    res.status(201).json({ user, token });
   }),
 );
 

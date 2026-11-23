@@ -36,6 +36,7 @@ const TOP_UP_DAYS = 3;
 /** Past showtimes (and their tickets) are kept this long for "My Tickets" history. */
 const KEEP_PAST_DAYS = 7;
 const MAX_TITLES = 18;
+const GUEST_TTL_DAYS = 30;
 const BOX_OFFICE_EMAIL = "boxoffice@cinema.local";
 
 // ---------------------------------------------------------------------------
@@ -212,6 +213,7 @@ export type SyncStats = {
   seatsToppedUp: number;
   showtimesRemoved: number;
   moviesRetired: number;
+  guestsRemoved: number;
 };
 
 export async function syncCatalog(
@@ -228,6 +230,7 @@ export async function syncCatalog(
     seatsToppedUp: 0,
     showtimesRemoved: 0,
     moviesRetired: 0,
+    guestsRemoved: 0,
   };
 
   const boxOffice = await prisma.user.upsert({
@@ -363,6 +366,15 @@ export async function syncCatalog(
     where: { id: { notIn: [...activeIds] }, tmdbId: { not: null }, showtimes: { none: {} } },
   });
   stats.moviesRetired = retired.count;
+  // Guest accounts from visitors who never booked anything, after a month
+  const guests = await prisma.user.deleteMany({
+    where: {
+      email: { endsWith: "@guest.cinema.local" },
+      createdAt: { lt: new Date(now.getTime() - GUEST_TTL_DAYS * 86_400_000) },
+      reservations: { none: {} },
+    },
+  });
+  stats.guestsRemoved = guests.count;
 
   return stats;
 }
